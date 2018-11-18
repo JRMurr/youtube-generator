@@ -1,6 +1,10 @@
 # local package
 -e .
 
+# scrape captions
+google-api-python-client
+oauth2client
+
 # external requirements
 click
 Sphinx

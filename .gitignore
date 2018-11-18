@@ -59,6 +59,9 @@ target/
 # DotEnv configuration
 .env
 
+# Youtube data stuff
+youtube-api-data/
+
 # Database
 *.db
 *.rdb
@@ -80,3 +83,8 @@ target/
 
 # Mac OS-specific storage files
 .DS_Store
+
+# misc
+tmp.py
+tmp.sql
+set_theme.sh 
