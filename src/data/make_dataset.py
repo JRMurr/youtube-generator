@@ -6,11 +6,12 @@ from dotenv import find_dotenv, load_dotenv
 from youtube_api_setup import YoutubeWrapper
 import os
 import yaml
-from pprint import pprint
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 # Channels to get info from
 SEED_DATA = os.path.abspath(os.path.join(THIS_DIR, 'seed_search.yml'))
+
+
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('output_filepath', type=click.Path())
