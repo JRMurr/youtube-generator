@@ -6,10 +6,14 @@ from dotenv import find_dotenv, load_dotenv
 from youtube_api_setup import YoutubeWrapper
 import os
 import yaml
+import sqlite3
+
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 # Channels to get info from
 SEED_DATA = os.path.abspath(os.path.join(THIS_DIR, 'seed_search.yml'))
+
+youtube = YoutubeWrapper()
 
 
 @click.command()
@@ -24,9 +28,24 @@ def main(input_filepath, output_filepath):
 
 
 def getVideoInfo(channels):
-    youtube = YoutubeWrapper()
     for channel in channels:
         youtube.getChannelUploads(channel)
+
+def getCaptionData():
+    logger = logging.getLogger(__name__)
+    logger.info('Getting caption data')
+    c = youtube.conn.cursor()
+    # get all vidIds
+    c.execute('''SELECT id from VideoInfo''')
+    rows = c.fetchall()
+    for row in rows:
+        vidId = row[0]
+        try:
+            youtube.getCaptions(vidId)
+        except:
+            logger.info(f'error getting caption data for vidId: {vidId}')
+
+
 
 
 if __name__ == '__main__':
@@ -41,6 +60,7 @@ if __name__ == '__main__':
     load_dotenv(find_dotenv())
 
     # main()
-    with open(SEED_DATA, 'r') as stream:
-        seed_youtube = yaml.load(stream)
-    getVideoInfo(seed_youtube['channels'])
+    # with open(SEED_DATA, 'r') as stream:
+    #     seed_youtube = yaml.load(stream)
+    # getVideoInfo(seed_youtube['channels'])
+    getCaptionData()

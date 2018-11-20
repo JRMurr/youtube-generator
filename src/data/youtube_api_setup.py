@@ -68,12 +68,20 @@ class YoutubeWrapper:
         UNIQUE(name))
         ''')
         c.execute('''
+        CREATE TABLE IF NOT EXISTS CaptionInfo
+        (id TEXT, vidId TEXT, caption TEXT, 
+        UNIQUE(id))
+        ''')
+        c.execute('''
         CREATE UNIQUE INDEX IF NOT EXISTS idx_VideoInfo_id ON VideoInfo (id);
         ''')
         c.execute('''
         CREATE UNIQUE INDEX IF NOT EXISTS idx_ChannelInfo_name ON ChannelInfo (name);
         ''')
-        # TODO: captions table
+        c.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_CaptionInfo_id ON CaptionInfo (id);
+        ''')
+        
         self.conn.commit()
 
     def _buildFeilds(self, rootPrefix, items, addPageInfo=False):
@@ -139,28 +147,29 @@ class YoutubeWrapper:
         return {'id': row[0], 'name': row[1], 'description': row[2], 'viewCount': row[3],
                 'subscriberCount': row[4], 'videoCount': row[5], 'uploadsPlaylist': row[6]}
 
+
+    def getVidIds(playlistId):
+        playlistItems = self.service.playlistItems()
+        request = playlistItems.list(
+            part='contentDetails',
+            playlistId=playlistId,
+            fields='items/contentDetails/videoId, pageInfo, nextPageToken',
+            maxResults=50
+        )
+        vidIds = []
+        while request is not None:
+            uploads_page = request.execute()
+            vidIds = vidIds + [item['contentDetails']['videoId']
+                                for item in uploads_page['items']]
+            request = playlistItems.list_next(request, uploads_page)
+        return vidIds
+
     def getChannelUploads(self, channelName, updateDb=True):
         channelInfo = self.getChannelInfo(channelName, updateDb=True)
         if not channelInfo:
             self.logger.error(f'{channelName} not found')
             return
         c = self.conn.cursor()
-
-        def getVidIds():
-            playlistItems = self.service.playlistItems()
-            request = playlistItems.list(
-                part='contentDetails',
-                playlistId=channelInfo['uploadsPlaylist'],
-                fields='items/contentDetails/videoId, pageInfo, nextPageToken',
-                maxResults=50
-            )
-            vidIds = []
-            while request is not None:
-                uploads_page = request.execute()
-                vidIds = vidIds + [item['contentDetails']['videoId']
-                                   for item in uploads_page['items']]
-                request = playlistItems.list_next(request, uploads_page)
-            return vidIds
 
         def getVideoInfoFromApi():
             videoService = self.service.videos()
@@ -169,7 +178,7 @@ class YoutubeWrapper:
                 'statistics': ['viewCount', 'likeCount', 'dislikeCount']
                 }]
             fields = ','.join(self._buildFeilds('items', itemFields, True))
-            vidIds = getVidIds()
+            vidIds = getVidIds(channelInfo['uploadsPlaylist'])
             videos = []
             for ids in chunks(vidIds, 50):
                 request = videoService.list(
@@ -198,6 +207,7 @@ class YoutubeWrapper:
             ) for video in videos]
             c.executemany(SQL, videoTuples)
             self.conn.commit()
+
         if updateDb:
             getVideoInfoFromApi()
         SQL = '''
@@ -219,6 +229,61 @@ class YoutubeWrapper:
             return info
 
         return [rowToDict(row) for row in rows]
+
+    # since this function will be called out and probaly wont need the return info only return when not updating the DB
+    def getCaptions(self, vidId, updateDb=True):
+        # TODO: check if vidId exists, if not get data for it
+        c = self.conn.cursor()
+        def getCaptionFromAPi():
+            itemFields = ['id', {
+                'snippet': ['videoId', 'trackKind', 'language']
+            }]
+            fields = ','.join(self._buildFeilds('items', itemFields, False))
+            possibleCaptions = self.service.captions().list(
+                part='snippet, id',
+                videoId=vidId,
+                fields=fields
+            ).execute()
+            # only keep english captions
+            def captionFilter(caption):
+                return caption['snippet']['language'] == 'en' and caption['snippet']['trackKind'] == 'standard'
+
+            filteredCaptions = list(filter(captionFilter, possibleCaptions['items']))
+            if len(filteredCaptions) == 0:
+                # TODO: add feild to video table that stores that no good captions are available 
+                return
+
+            def getFullCaption(captionInfo):
+                # captionData comes back as byte string so will need to be decoded when retrived
+                captionData = self.service.captions().download(
+                    id=captionInfo['id'],
+                    tfmt='srt'
+                ).execute()
+                #  (id, vidId, caption)
+                return (captionInfo['id'], captionInfo['snippet']['videoId'], captionData)
+
+            SQL = '''REPLACE INTO CaptionInfo VALUES
+                (:id, :vidId, :caption)'''
+            # NOTE: for now will only get the first standard+english caption since api quota is high for downloading captions
+            c.execute(SQL, getFullCaption(filteredCaptions[0]))
+            self.conn.commit()
+
+        if updateDb:
+            getCaptionFromAPi()
+        else:
+            SQL = '''SELECT id, vidId, caption
+                FROM CaptionInfo WHERE vidId=?'''
+            c.execute(SQL, (vidId,))
+            rows = c.fetchall()
+
+            def rowToDict(row):
+                keys = ['id', 'vidId', 'caption']
+                info = {}
+                for k, v in zip(keys, row):
+                    info[k] = v
+                return info
+
+            return [rowToDict(row) for row in rows]
 
 
 if __name__ == '__main__':
