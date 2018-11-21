@@ -50,6 +50,10 @@ class Captioninfo(BaseModel):
     class Meta:
         table_name = 'CaptionInfo'
 
+def raw_query(query):
+    sql, params = query.sql()
+    return sql.replace('?',"'{}'").format(*params)
+
 def create_tables():
     with database:
         database.create_tables([Channelinfo, Videoinfo, Captioninfo])
