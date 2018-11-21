@@ -30,9 +30,11 @@ def getCaptionDF():
     def bytesToText(captionBytes):
         return subToText(bytesToSubtitle(captionBytes))
     
-    query = Captioninfo.select(Captioninfo, Videoinfo).join(Videoinfo)
+    query = (Captioninfo
+            .select(Captioninfo,
+            Videoinfo.title, Videoinfo.categoryId, Videoinfo.viewCount, Videoinfo.likeCount, Videoinfo.dislikeCount)
+            .join(Videoinfo))
     df = pd.read_sql(raw_query(query), database.connection())
-    df = df.drop(['checkedForCaptions'], axis=1)
     df['caption'] = df['caption'].apply(bytesToText)
     return df
 
