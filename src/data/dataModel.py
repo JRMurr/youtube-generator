@@ -15,14 +15,6 @@ class BaseModel(Model):
     class Meta:
         database = database
 
-class Captioninfo(BaseModel):
-    caption = TextField(null=False)
-    id = TextField(null=True, unique=True, primary_key=True)
-    vidId = ForeignKeyField(Videoinfo, column_name='vidId', null=False)
-
-    class Meta:
-        table_name = 'CaptionInfo'
-
 class Channelinfo(BaseModel):
     id = TextField(null=False, unique=True, primary_key=True)
     description = TextField(null=True)
@@ -45,10 +37,26 @@ class Videoinfo(BaseModel):
     publishedAt = TextField(column_name='publishedAt', null=True)
     title = TextField(null=True)
     viewCount = IntegerField(column_name='viewCount', null=True)
+    checkedForCaptions = BooleanField(column_name='checkedForCaptions', default=False)
 
     class Meta:
         table_name = 'VideoInfo'
 
+class Captioninfo(BaseModel):
+    caption = TextField(null=False)
+    id = TextField(null=True, unique=True, primary_key=True)
+    vidId = ForeignKeyField(Videoinfo, column_name='vidId', null=False)
+
+    class Meta:
+        table_name = 'CaptionInfo'
+
 def create_tables():
     with database:
         database.create_tables([Channelinfo, Videoinfo, Captioninfo])
+
+# if __name__ == '__main__':
+#     if not os.path.isfile(DB):
+#         print(f'Creating database {DB}')
+#         create_tables()
+#     else:
+#         print(f'file: {DB}, already exists so will do nothing')
