@@ -8,8 +8,6 @@ def chunks(l, n):
         yield l[i:i + n]
 
 class YoutubeWrapper:
-    # TODO: switch to pewee
-    # TODO: add primary key and foregin key info to db + dbmodel
     ''' Wraps the youtube api and stores results in a database table'''
 
     def __init__(self, sqlLiteTablePath=DEFAULT_DB):
@@ -42,7 +40,6 @@ class YoutubeWrapper:
         Will call youtube api if 'updateDb' is true, if not will just return info already in db
         '''
         self.logger.info(f'Getting info for {channelName}')
-        c = self.conn.cursor()
         if updateDb:
             itemsToGet = ['id', 'contentDetails/relatedPlaylists/uploads', {
                             'snippet': ['title', 'description'],
@@ -124,18 +121,20 @@ class YoutubeWrapper:
                 'dislikeCount': video['statistics']['dislikeCount'],
                 'publishedAt': video['snippet']['publishedAt'],
                 'categoryId': video['snippet']['categoryId'],
+                'checkedForCaptions': False
             }
             Videoinfo.create(**info)
 
         if updateDb:
             getVideoInfoFromApi()
 
-        return Videoinfo.select(Videoinfo).join(channelInfo).where(ChannelInfo.name == channelName)
+        return Videoinfo.get(Videoinfo).join(channelInfo).where(ChannelInfo.name == channelName)
 
     def getCaptions(self, vidId, updateDb=True):
         # TODO: check if vidId exists, if not get data for it
-        c = self.conn.cursor()
-
+        vidInfo = Videoinfo.get(Videoinfo.id == vidId)
+        if not vidInfo:
+            self.logger.info("Video has already been checked for captions so will not check again")
         def getCaptionFromAPi():
             itemFields = ['id', {
                 'snippet': ['videoId', 'trackKind', 'language']
@@ -146,13 +145,14 @@ class YoutubeWrapper:
                 videoId=vidId,
                 fields=fields
             ).execute()
+            vidInfo.checkedForCaptions = True
+            vidInfo.save()
             # only keep english and standard captions
             def captionFilter(caption):
                 return caption['snippet']['language'] == 'en' and caption['snippet']['trackKind'] == 'standard'
 
             filteredCaptions = list(filter(captionFilter, possibleCaptions['items']))
             if len(filteredCaptions) == 0:
-                # TODO: add feild to video table that stores that no good captions are available
                 return
 
             def getFullCaption(captionInfo):
@@ -170,4 +170,4 @@ class YoutubeWrapper:
         if updateDb:
             return getCaptionFromAPi()
         else:
-            return Captioninfo.select(Captioninfo).where(Captioninfo.vidid == vidId)
+            return Captioninfo.get(Captioninfo).where(Captioninfo.vidid == vidId)

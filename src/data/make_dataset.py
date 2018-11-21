@@ -3,10 +3,10 @@ import click
 import logging
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
-from youtube_api_setup import YoutubeWrapper
+from youtubeWrapper import YoutubeWrapper
+from dataModel import Videoinfo
 import os
 import yaml
-import sqlite3
 
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -34,16 +34,11 @@ def getVideoInfo(channels):
 def getCaptionData():
     logger = logging.getLogger(__name__)
     logger.info('Getting caption data')
-    c = youtube.conn.cursor()
-    # get all vidIds
-    c.execute('''SELECT id from VideoInfo''')
-    rows = c.fetchall()
-    for row in rows:
-        vidId = row[0]
+    for vid in Videoinfo.select(Videoinfo.checkedForCaptions == False):
         try:
-            youtube.getCaptions(vidId)
+            youtube.getCaptions(vid.id)
         except:
-            logger.info(f'error getting caption data for vidId: {vidId}')
+            logger.info(f'error getting caption data for vidId: {vid.id}')
 
 
 
