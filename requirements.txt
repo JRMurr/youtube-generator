@@ -8,7 +8,10 @@ oauth2client
 # parse captions
 srt
 
-# external requirements
+# data model
+peewee
+
+# cookiecuter requirements
 click
 Sphinx
 coverage
