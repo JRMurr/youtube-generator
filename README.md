@@ -53,6 +53,15 @@ Project Organization
 
 
 --------
+# Setup
+make sure you have conda installed and run 
+```
+make create_environment
+source activate youtube-generator
+make requirements
+```
+this will create an enviroment and install keras with the tenserflow backend along with other pip dependencies 
+
 
 # Scrape data
 1. follow the steps here to make a project and get the oauth info https://developers.google.com/youtube/v3/quickstart/python
@@ -60,7 +69,6 @@ Project Organization
 3. run `python src/data/youtube_api_setup.py` to get and store ouath information for a youtube/google account of your chooing
 
 After those steps the oauth info will be stored and you will not need to worry about it anymore
-
 
 
 <p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>

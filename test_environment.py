@@ -1,5 +1,4 @@
 import sys
-
 REQUIRED_PYTHON = "python3"
 
 

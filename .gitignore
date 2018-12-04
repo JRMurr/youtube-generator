@@ -84,7 +84,13 @@ youtube-api-data/
 # Mac OS-specific storage files
 .DS_Store
 
+
+#models
+*.h5
+*.hdf5
+
 # misc
 tmp.py
 tmp.sql
-set_theme.sh 
+set_theme.sh
+logs/*
